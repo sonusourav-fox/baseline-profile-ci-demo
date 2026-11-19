@@ -9,20 +9,39 @@ fi
 adb start-server >/dev/null
 adb devices -l
 
-# macOS ships Bash 3.2; avoid mapfile/readarray.
-CONNECTED="$(adb devices | awk 'NR > 1 && NF >= 2 { print $1 " " $2 }')"
-TOTAL="$(printf '%s\n' "$CONNECTED" | awk 'NF { n++ } END { print n+0 }')"
-READY="$(printf '%s\n' "$CONNECTED" | awk '$2 == "device" { n++ } END { print n+0 }')"
+# Parse "adb devices" lines. Serial may contain spaces (wireless / mDNS names).
+# Last token is state: device | unauthorized | offline | ...
+# macOS Bash 3.2: no mapfile.
+DEVICE_LINES="$(
+  adb devices | awk '
+    NR > 1 && NF >= 2 {
+      state = $NF
+      if (state != "device" && state != "unauthorized" && state != "offline" && state != "connecting") {
+        next
+      }
+      serial = $0
+      sub(/[[:space:]]+[^[:space:]]+$/, "", serial)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", serial)
+      if (serial != "") {
+        print serial "\t" state
+      }
+    }
+  '
+)"
+
+TOTAL="$(printf '%s\n' "$DEVICE_LINES" | awk 'NF { n++ } END { print n+0 }')"
+READY="$(printf '%s\n' "$DEVICE_LINES" | awk -F'\t' '$2 == "device" { n++ } END { print n+0 }')"
 
 if [[ "$TOTAL" -ne 1 || "$READY" -ne 1 ]]; then
-  echo "::error::Expected exactly one authorized USB Android device, got $TOTAL connected and $READY authorized."
-  echo "Unlock the phone, enable USB debugging, and accept the runner host RSA prompt."
+  echo "::error::Expected exactly one authorized Android device, got $TOTAL connected and $READY authorized."
+  echo "Unlock the phone, enable USB or wireless debugging, and accept the runner host RSA prompt."
   exit 1
 fi
 
-SERIAL="$(printf '%s\n' "$CONNECTED" | awk '$2 == "device" { print $1 }')"
-if [[ "$SERIAL" == emulator-* || "$SERIAL" == *:* ]]; then
-  echo "::error::Expected a USB-connected physical device, not an emulator or TCP/IP ADB endpoint: $SERIAL"
+SERIAL="$(printf '%s\n' "$DEVICE_LINES" | awk -F'\t' '$2 == "device" { print $1; exit }')"
+
+if [[ "$SERIAL" == emulator-* ]]; then
+  echo "::error::Expected a physical device, not an emulator serial: $SERIAL"
   exit 1
 fi
 
