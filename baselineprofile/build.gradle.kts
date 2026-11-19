@@ -26,7 +26,7 @@ android {
 
     // GMD used when baselineprofile.useConnectedDevices=false (default).
     // API 34 + aosp: no root required for BaselineProfileRule on API 33+.
-    testOptions.managedDevices.devices {
+    testOptions.managedDevices.allDevices {
         create<com.android.build.api.dsl.ManagedVirtualDevice>("pixel6Api34") {
             device = "Pixel 6"
             apiLevel = 34

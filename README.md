@@ -77,6 +77,12 @@ pull requests** if you want the workflow to open a PR with regenerated profiles.
   and do **not** run untrusted fork PRs on the runner.
 - Prefer a dedicated test phone / VM. Do not use a device with personal accounts/data.
 
+## Verified locally
+
+`./gradlew :app:generateBaselineProfile` completed successfully on a Gradle Managed
+Device (`pixel6Api34`). Sample outputs are already in
+`app/src/main/generated/baselineProfiles/` so you can see the expected shape before CI.
+
 ## Stack
 
 - AGP `8.9.2` · Kotlin `2.1.10` · Gradle `8.11.1`
